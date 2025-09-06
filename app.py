@@ -13,8 +13,13 @@ from pandas import json_normalize
 from collections import Counter
 import json
 import pdb
+
 from parsers.parser import Parser
 from parsers.get_csv_values import Csv
+
+from models import db
+from explore.routes import bp as explore_bp
+
 
 directory_path = 'C:/Users/Robert.Rodriguez/Desktop/STIGS_Reviewer/data/'
 csv_files = glob.glob(os.path.join(directory_path, '*.csv'))
@@ -185,7 +190,19 @@ severity_pie_df_not_reviewed = pd.DataFrame({
 #fig = px.pie(status_df, names='Status & Severity', values='Count', title='Findings by Severity and Status')
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+### This line is new Rob from GPT
+server = app.server
+### done with new GPT code
+
 load_figure_template('DARKLY')
+
+### This line is new Rob from GPT
+# --- NEW: Configure SQLAlchemy using the FLask server ---
+server.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///stigs.db')
+server.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+db.init_app(server)
+server.register_blueprint(explore_bp)
+### done with the new GPT code
 
 app.layout = html.Div([
     html.Div([
