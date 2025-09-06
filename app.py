@@ -16,6 +16,8 @@ import pdb
 
 from parsers.parser import Parser
 from parsers.get_csv_values import Csv
+from models import db
+from explore.routes import bp as explore_bp
 
 from models import db
 from explore.routes import bp as explore_bp
@@ -347,5 +349,6 @@ def update_pie_chart(selected_value, toggle_value):
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 

@@ -1,0 +1,7 @@
+#app { display: flex; flex-direction: column; font-family: Arial, sans-serif; }
+#filters { margin-bottom: 1rem; }
+.split { display: flex; height: 80vh; }
+#left { width: 30%; border-right: 1px solid #ccc; overflow-y: auto; }
+#right { flex: 1; padding: 1rem; overflow-y: auto; }
+#results li { cursor: pointer; padding: 4px; border-bottom: 1px solid #eee; }
+#results li:hover { background: #f0f0f0; }
