@@ -16,7 +16,7 @@ import pdb
 from parsers.parser import Parser
 from parsers.get_csv_values import Csv
 
-directory_path = 'C:/Users/Robert.Rodriguez/Desktop/STIG_Reviewer/data/'
+directory_path = 'C:/Users/Robert.Rodriguez/Desktop/STIGS_Reviewer/data/'
 csv_files = glob.glob(os.path.join(directory_path, '*.csv'))
 nessus_files = glob.glob(os.path.join(directory_path, '*.nessus'))
 cklb_files = glob.glob(os.path.join(directory_path, '*.cklb'))
@@ -330,4 +330,5 @@ def update_pie_chart(selected_value, toggle_value):
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
 
