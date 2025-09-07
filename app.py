@@ -38,7 +38,8 @@ totalHighFindingsClosed = totalMediumFindingsClosed = totalLowFindingsClosed = 0
 totalHighFindingsNA = totalMediumFindingsNA = totalLowFindingsNA = 0
 totalHighFindingsNotReviewed = totalMediumFindingsNotReviewed = totalLowFindingsNotReviewed = 0
 
-
+with server.app_context():
+    clear_database()
 for file in all_files:
     #breakpoint()
     print(file)
@@ -64,6 +65,12 @@ for file in all_files:
         mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
         lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')
 
+        # Detailed (for Explore page / DB)
+    
+        detailed_records = Parser.read_checklist_detailed(file)
+        with server.app_context();
+            ingest_records(detailed_records)
+
         #print(file)
         #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
         #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
@@ -71,12 +78,18 @@ for file in all_files:
         #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")
 
     if ".ckl" in file and ".cklb" not in file:
+        # Aggregates (for dashboard)
         status_severity_counts = Parser.read_checklist(file)
 
         highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
         mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
         lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')     
 
+        # Detailed (for Explore page / DB)
+    
+        detailed_records = Parser.read_checklist_detailed(file)
+        with server.app_context();
+            ingest_records(detailed_records)
         #print(file)
         #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
         #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
@@ -351,6 +364,7 @@ def update_pie_chart(selected_value, toggle_value):
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
