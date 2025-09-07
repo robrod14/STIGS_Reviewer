@@ -22,6 +22,8 @@ from explore.routes import bp as explore_bp
 from models import db
 from explore.routes import bp as explore_bp
 
+from helpers.ingest_to_db import ingest_records, clear_database
+
 
 directory_path = 'C:/Users/Robert.Rodriguez/Desktop/STIGS_Reviewer/data/'
 csv_files = glob.glob(os.path.join(directory_path, '*.csv'))
@@ -349,6 +351,7 @@ def update_pie_chart(selected_value, toggle_value):
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
