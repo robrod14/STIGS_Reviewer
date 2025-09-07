@@ -90,6 +90,49 @@ class Parser:
 
         return severity_status_counts
 
+    @staticmethod
+    def read_checklist_detailed(checklist):
+        """
+        Parse a checklist XML and return a list of dictionaries, one per VULN.
+        Provides detailed fields needed for Explore feature and DB ingestion.
+        """
+        tree = ET.parse(checklist)
+        root = tree.getroot()
+        records = []
+    
+        for vuln in root.findall('.//VULN'):
+            record = {}
+    
+            # Map STIG_DATA elements
+            for stig_data in vuln.findall('.//STIG_DATA'):
+                attr = stig_data.find('VULN_ATTRIBUTE')
+                val = stig_data.find('ATTRIBUTE_DATA')
+                if attr is not None and val is not None:
+                    key = attr.text.strip().lower().replace(" ", "_")
+                    record[key] = val.text.strip()
+    
+            # Direct children
+            record['status'] = vuln.findtext('.//STATUS', default="Not_Reviewed")
+            record['finding_details'] = vuln.findtext('.//FINDING_DETAILS', default="")
+            record['comments'] = vuln.findtext('.//COMMENTS', default="")
+    
+            # Normalize useful fields
+            record['severity'] = record.get('severity', 'unknown')
+            record['stig_id'] = record.get('rule_id', record.get('vuln_num', ''))
+            record['title'] = record.get('rule_title', '')
+    
+            # Check/Fix texts
+            record['check_text'] = record.get('check_content', '')
+            record['fix_text'] = record.get('fix_text', '')
+    
+            # Mappings
+            record['nist_mapping'] = record.get('ia_controls', '')
+            record['cci_mapping'] = record.get('cci', '')
+    
+            records.append(record)
+    
+        return records
+
     #@staticmethod
     #def get_csv_values( dataframe, category):
     #    dataframe.index = dataframe.index.str.lower()
@@ -98,5 +141,6 @@ class Parser:
     #    categoryFindingsClosed = dataframe.loc['not a finding', category] if 'not a finding' in dataframe.index and category in dataframe.columns else 0
     #    categoryFindingsNA = dataframe.loc['not applicable', category] if 'not applicable' in dataframe.index and category in dataframe.columns else 0
     #    categoryFindingsNotReviewed = dataframe.loc['not reviewed', category] if 'not reviewed' in dataframe.index and category in dataframe.columns else 0
+
 
     #    return categoryFindingsOpen, categoryFindingsClosed, categoryFindingsNA, categoryFindingsNotReviewed
