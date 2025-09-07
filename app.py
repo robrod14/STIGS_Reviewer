@@ -1,6 +1,5 @@
 import dash
-from dash import dcc
-from dash import html
+from dash import dcc, html
 from dash.dependencies import Input, Output
 from dash_bootstrap_templates import load_figure_template
 import dash_bootstrap_components as dbc
@@ -18,10 +17,6 @@ from parsers.parser import Parser
 from parsers.get_csv_values import Csv
 from models import db
 from explore.routes import bp as explore_bp
-
-from models import db
-from explore.routes import bp as explore_bp
-
 from helpers.ingest_to_db import ingest_records, clear_database
 
 
@@ -32,6 +27,18 @@ cklb_files = glob.glob(os.path.join(directory_path, '*.cklb'))
 checklist_files = glob.glob(os.path.join(directory_path, '*.ckl'))
 all_files = csv_files + nessus_files + cklb_files + checklist_files
 
+# latest addition according to GPT --- Initialize Dash + Flask ---
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+server = app.server
+
+# --- Configure SQLAlchemy + Blueprints ----
+# --- NEW: Configure SQLAlchemy using the FLask server ---
+server.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///stigs.db')
+server.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+db.init_app(server)
+server.register_blueprint(explore_bp)
+
+
 totalOpen = totalClosed = totalNA = totalNotReviewed = 0
 totalCriticalFindingsOpen = criticalFindingsOpen = totalHighFindingsOpen = totalMediumFindingsOpen = totalLowFindingsOpen = 0
 totalHighFindingsClosed = totalMediumFindingsClosed = totalLowFindingsClosed = 0
@@ -40,113 +47,114 @@ totalHighFindingsNotReviewed = totalMediumFindingsNotReviewed = totalLowFindings
 
 with server.app_context():
     clear_database()
-for file in all_files:
-    #breakpoint()
-    print(file)
-    if ".nessus" in file:
-        #print("i have a nessus file")
-        nessus_df = Parser.get_nessus_df(file)
-        severity_counts = nessus_df['severity'].value_counts()
-        criticalFindingsOpen = severity_counts.get('4', 0)
-        highFindingsOpen = severity_counts.get('3', 0)
-        mediumFindingsOpen = severity_counts.get('2', 0)
-        lowFindingsOpen = severity_counts.get('1', 0)
-
-        highFindingsClosed = mediumFindingsClosed = lowFindingsClosed = 0
-        highFindingsNA = mediumFindingsNA = lowFindingsNA = 0
-        highFindingsNotReviewed = mediumFindingsNotReviewed = lowFindingsNotReviewed = 0
-        #print(f" nessus results for lowFindingsOpen: {criticalFindingsOpen}")
-
-    if ".cklb" in file:
-        #print("I have a cklb file")
-        status_severity_counts = Parser.read_cklb(file)
-
-        highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
-        mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
-        lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')
-
-        # Detailed (for Explore page / DB)
+# for statement below was in line with totalOPEN above
+    for file in all_files:
+        #breakpoint()
+        print(file)
+        if ".nessus" in file:
+            #print("i have a nessus file")
+            nessus_df = Parser.get_nessus_df(file)
+            severity_counts = nessus_df['severity'].value_counts()
+            criticalFindingsOpen = severity_counts.get('4', 0)
+            highFindingsOpen = severity_counts.get('3', 0)
+            mediumFindingsOpen = severity_counts.get('2', 0)
+            lowFindingsOpen = severity_counts.get('1', 0)
     
-        detailed_records = Parser.read_checklist_detailed(file)
-        with server.app_context():
-            ingest_records(detailed_records)
-
-        #print(file)
-        #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
-        #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
-        #      highNA {highFindingsNA}, mediumNA {mediumFindingsNA}, lowNA {lowFindingsNA}/\
-        #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")
-
-    if ".ckl" in file and ".cklb" not in file:
-        # Aggregates (for dashboard)
-        status_severity_counts = Parser.read_checklist(file)
-
-        highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
-        mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
-        lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')     
-
-        # Detailed (for Explore page / DB)
+            highFindingsClosed = mediumFindingsClosed = lowFindingsClosed = 0
+            highFindingsNA = mediumFindingsNA = lowFindingsNA = 0
+            highFindingsNotReviewed = mediumFindingsNotReviewed = lowFindingsNotReviewed = 0
+            #print(f" nessus results for lowFindingsOpen: {criticalFindingsOpen}")
     
-        detailed_records = Parser.read_checklist_detailed(file)
-        with server.app_context():
-            ingest_records(detailed_records)
-        #print(file)
-        #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
-        #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
-        #      highNA {highFindingsNA}, mediumNA {mediumFindingsNA}, lowNA {lowFindingsNA}/\
-        #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")   
-
-
-    if ".csv" in file:
-        #print("I have a csv")
-        df = pd.read_csv(file, skiprows=1)
-        status_severity_counts = df.groupby(['Status', 'Severity']).size().unstack(fill_value=0)  
-        #print(f"{status_severity_counts} ok done")
-
-        highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
-        mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
-        lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')
+        if ".cklb" in file:
+            #print("I have a cklb file")
+            status_severity_counts = Parser.read_cklb(file)
+    
+            highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
+            mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
+            lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')
+    
+            # Detailed (for Explore page / DB)
         
-        #print(file)
-        #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
-        #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
-        #      highNA {highFindingsNA}, mediumNA {mediumFindingsNA}, lowNA {lowFindingsNA}/\
-        #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")
-
-    #breakpoint()
-    stigSumOfOpen = criticalFindingsOpen + highFindingsOpen + mediumFindingsOpen + lowFindingsOpen
-    stigSumOfClosed = highFindingsClosed + mediumFindingsClosed + lowFindingsClosed
-    stigSumOfNA = highFindingsNA + mediumFindingsNA + lowFindingsNA
-    stigSumOfNotReviewed = highFindingsNotReviewed + mediumFindingsNotReviewed + lowFindingsNotReviewed
-
-    #breakpoint()
-
-    totalOpen += stigSumOfOpen
-    totalClosed += stigSumOfClosed
-    totalNA += stigSumOfNA
-    totalNotReviewed += stigSumOfNotReviewed
-
-    #breakpoint()
-
-    totalCriticalFindingsOpen += criticalFindingsOpen
-    totalHighFindingsOpen += highFindingsOpen
-    totalMediumFindingsOpen += mediumFindingsOpen
-    totalLowFindingsOpen += lowFindingsOpen
-
-    totalHighFindingsClosed += highFindingsClosed
-    totalMediumFindingsClosed += mediumFindingsClosed
-    totalLowFindingsClosed += lowFindingsClosed
-
-    totalHighFindingsNA += highFindingsNA
-    totalMediumFindingsNA += mediumFindingsNA
-    totalLowFindingsNA += lowFindingsNA
-
-    totalHighFindingsNotReviewed += highFindingsNotReviewed
-    totalMediumFindingsNotReviewed += mediumFindingsNotReviewed
-    totalLowFindingsNotReviewed += lowFindingsNotReviewed
-    #breakpoint()
-
-    criticalFindingsOpen = 0
+            detailed_records = Parser.read_checklist_detailed(file)
+            with server.app_context():
+                ingest_records(detailed_records)
+    
+            #print(file)
+            #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
+            #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
+            #      highNA {highFindingsNA}, mediumNA {mediumFindingsNA}, lowNA {lowFindingsNA}/\
+            #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")
+    
+        if ".ckl" in file and ".cklb" not in file:
+            # Aggregates (for dashboard)
+            status_severity_counts = Parser.read_checklist(file)
+    
+            highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
+            mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
+            lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')     
+    
+            # Detailed (for Explore page / DB)
+        
+            detailed_records = Parser.read_checklist_detailed(file)
+            with server.app_context():
+                ingest_records(detailed_records)
+            #print(file)
+            #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
+            #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
+            #      highNA {highFindingsNA}, mediumNA {mediumFindingsNA}, lowNA {lowFindingsNA}/\
+            #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")   
+    
+    
+        if ".csv" in file:
+            #print("I have a csv")
+            df = pd.read_csv(file, skiprows=1)
+            status_severity_counts = df.groupby(['Status', 'Severity']).size().unstack(fill_value=0)  
+            #print(f"{status_severity_counts} ok done")
+    
+            highFindingsOpen, highFindingsClosed, highFindingsNA, highFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'high')
+            mediumFindingsOpen, mediumFindingsClosed, mediumFindingsNA, mediumFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'medium')
+            lowFindingsOpen, lowFindingsClosed, lowFindingsNA, lowFindingsNotReviewed = Csv.get_csv_values(status_severity_counts,'low')
+            
+            #print(file)
+            #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
+            #      highClosed {highFindingsClosed}, mediumClosed {mediumFindingsClosed}, lowClosed {lowFindingsClosed}/\
+            #      highNA {highFindingsNA}, mediumNA {mediumFindingsNA}, lowNA {lowFindingsNA}/\
+            #      highNR {highFindingsNotReviewed}, mediumNR {mediumFindingsNotReviewed}, lowNR {lowFindingsNotReviewed}")
+    
+        #breakpoint()
+        stigSumOfOpen = criticalFindingsOpen + highFindingsOpen + mediumFindingsOpen + lowFindingsOpen
+        stigSumOfClosed = highFindingsClosed + mediumFindingsClosed + lowFindingsClosed
+        stigSumOfNA = highFindingsNA + mediumFindingsNA + lowFindingsNA
+        stigSumOfNotReviewed = highFindingsNotReviewed + mediumFindingsNotReviewed + lowFindingsNotReviewed
+    
+        #breakpoint()
+    
+        totalOpen += stigSumOfOpen
+        totalClosed += stigSumOfClosed
+        totalNA += stigSumOfNA
+        totalNotReviewed += stigSumOfNotReviewed
+    
+        #breakpoint()
+    
+        totalCriticalFindingsOpen += criticalFindingsOpen
+        totalHighFindingsOpen += highFindingsOpen
+        totalMediumFindingsOpen += mediumFindingsOpen
+        totalLowFindingsOpen += lowFindingsOpen
+    
+        totalHighFindingsClosed += highFindingsClosed
+        totalMediumFindingsClosed += mediumFindingsClosed
+        totalLowFindingsClosed += lowFindingsClosed
+    
+        totalHighFindingsNA += highFindingsNA
+        totalMediumFindingsNA += mediumFindingsNA
+        totalLowFindingsNA += lowFindingsNA
+    
+        totalHighFindingsNotReviewed += highFindingsNotReviewed
+        totalMediumFindingsNotReviewed += mediumFindingsNotReviewed
+        totalLowFindingsNotReviewed += lowFindingsNotReviewed
+        #breakpoint()
+    
+        criticalFindingsOpen = 0
 
 
     #print(f"These are the totals for: Closed: {stigSumOfClosed}, Open: {stigSumOfOpen}, NA: {stigSumOfNA}, Not Reviewed: {stigSumOfNotReviewed}")
@@ -206,17 +214,18 @@ severity_pie_df_not_reviewed = pd.DataFrame({
 
 #fig = px.pie(status_df, names='Status & Severity', values='Count', title='Findings by Severity and Status')
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+#### original worked below
+#app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 ### This line is new Rob from GPT
-server = app.server
+#server = app.server
 ### done with new GPT code
 
 ### This line is new Rob from GPT
 # --- NEW: Configure SQLAlchemy using the FLask server ---
-server.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///stigs.db')
-server.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
-db.init_app(server)
-server.register_blueprint(explore_bp)
+#server.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///stigs.db')
+#server.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+#db.init_app(server)
+#server.register_blueprint(explore_bp)
 ### done with the new GPT code
 
 load_figure_template('DARKLY')
@@ -366,8 +375,3 @@ def update_pie_chart(selected_value, toggle_value):
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
