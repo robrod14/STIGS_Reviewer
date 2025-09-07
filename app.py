@@ -68,7 +68,7 @@ for file in all_files:
         # Detailed (for Explore page / DB)
     
         detailed_records = Parser.read_checklist_detailed(file)
-        with server.app_context();
+        with server.app_context():
             ingest_records(detailed_records)
 
         #print(file)
@@ -88,7 +88,7 @@ for file in all_files:
         # Detailed (for Explore page / DB)
     
         detailed_records = Parser.read_checklist_detailed(file)
-        with server.app_context();
+        with server.app_context():
             ingest_records(detailed_records)
         #print(file)
         #print(f"Rob here is what you want highOpen {highFindingsOpen}, mediumOpen {mediumFindingsOpen}, lowOpen {lowFindingsOpen}/\
@@ -211,8 +211,6 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 server = app.server
 ### done with new GPT code
 
-load_figure_template('DARKLY')
-
 ### This line is new Rob from GPT
 # --- NEW: Configure SQLAlchemy using the FLask server ---
 server.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///stigs.db')
@@ -220,6 +218,10 @@ server.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 db.init_app(server)
 server.register_blueprint(explore_bp)
 ### done with the new GPT code
+
+load_figure_template('DARKLY')
+
+
 
 app.layout = html.Div([
     html.Div([
